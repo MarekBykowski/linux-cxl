@@ -155,7 +155,8 @@ static int notrace unwind_next(struct task_struct *tsk,
 
 	return 0;
 }
-NOKPROBE_SYMBOL(unwind_next);
+NOKPROBE_SYMBOL(unwind_frame);
+EXPORT_SYMBOL(unwind_frame);
 
 static void notrace unwind(struct task_struct *tsk,
 			   struct unwind_state *state,
