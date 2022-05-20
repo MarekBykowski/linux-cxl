@@ -114,7 +114,8 @@ static int notrace unwind_next(struct unwind_state *state)
 
 	return 0;
 }
-NOKPROBE_SYMBOL(unwind_next);
+NOKPROBE_SYMBOL(unwind_frame);
+EXPORT_SYMBOL(unwind_frame);
 
 static void notrace unwind(struct unwind_state *state,
 			   stack_trace_consume_fn consume_entry, void *cookie)
