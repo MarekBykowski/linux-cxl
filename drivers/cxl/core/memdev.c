@@ -351,6 +351,9 @@ struct cxl_memdev *devm_cxl_add_memdev(struct cxl_dev_state *cxlds)
 	if (rc)
 		goto err;
 
+	//pr_info("mb: %s() <- %ps(): cdev %s created\n",
+	//	__func__, (void *)_RET_IP_, dev_name(&cxlmd->dev));
+
 	rc = devm_add_action_or_reset(cxlds->dev, cxl_memdev_unregister, cxlmd);
 	if (rc)
 		return ERR_PTR(rc);

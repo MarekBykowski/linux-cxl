@@ -4,7 +4,7 @@
 #ifndef _INTEL_EXTENDER_H_
 #define _INTEL_EXTENDER_H_
 
-#ifdef DEBUG
+#if defined(DEBUG) && 0
 #include <asm/stacktrace.h> /* For struct stackframe */
 
 /* args counting based on include/linux/arm-smccc.h by Marc Zyngier */
@@ -38,8 +38,9 @@
 			unwind_frame(tsk, &frame);	\
 		}	\
 	} while (0)
+ssss
 #else
-#define extender_trace_call(frames, fmt, ...)	do {} while (0)
+#define extender_trace_call(frames, ...)	do {} while (0)
 #endif
 
 #endif /*_INTEL_EXTENDER_H_*/

@@ -12,6 +12,7 @@
 #include <asm/div64.h>
 #include "cxlpci.h"
 #include "cxl.h"
+#include "linux/intel_extender.h"
 
 #define CXL_RCRB_SIZE	SZ_8K
 
@@ -307,6 +308,11 @@ err_xormap:
 		dev_name(&cxld->dev),
 		phys_to_target_node(cxld->hpa_range.start),
 		cxld->hpa_range.start, cxld->hpa_range.end);
+	pr_info("mb: %s() <- %ps(): add: %s node: %d range [%#llx - %#llx]\n",
+		__func__, (void *)_RET_IP_,
+		dev_name(&cxld->dev),
+		phys_to_target_node(cxld->hpa_range.start),
+		cxld->hpa_range.start, cxld->hpa_range.end);
 
 	return 0;
 
@@ -323,7 +329,7 @@ __mock struct acpi_device *to_cxl_host_bridge(struct device *host,
 	struct acpi_device *adev = to_acpi_device(dev);
 
 	if (!acpi_pci_find_root(adev->handle))
-		return NULL;
+		        return NULL;
 
 	if (strcmp(acpi_device_hid(adev), "ACPI0016") == 0)
 		return adev;
@@ -419,6 +425,21 @@ static int cxl_get_chbcr(union acpi_subtable_headers *header, void *arg,
 	return 0;
 }
 
+static int list_bus_dev(struct device *dev, void *arg)
+{
+	struct acpi_device *bridge = container_of(dev, struct acpi_device, dev);
+	bool all_dev = *(bool *)arg;
+
+	//sysfs_streq
+	if (all_dev)
+		pr_cont(" %s", dev_name(dev));
+	else
+		if (strcmp(acpi_device_hid(bridge), "ACPI0016") == 0)
+			pr_cont(" %s", dev_name(dev));
+
+	return 0;
+}
+
 static int add_host_bridge_dport(struct device *match, void *arg)
 {
 	acpi_status rc;
@@ -447,6 +468,8 @@ static int add_host_bridge_dport(struct device *match, void *arg)
 		.uid = uid,
 	};
 	acpi_table_parse_cedt(ACPI_CEDT_TYPE_CHBS, cxl_get_chbcr, &ctx);
+	pr_info("mb: %s() <- %ps(): ctx.chbcr %llx\n",
+		__func__, (void *)_RET_IP_, ctx.chbcr);
 
 	if (!ctx.chbcr) {
 		dev_warn(match, "No CHBS found for Host Bridge (UID %lld)\n",
@@ -635,6 +658,14 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 	struct device *host = &pdev->dev;
 	struct acpi_device *adev = ACPI_COMPANION(host);
 	struct cxl_cfmws_context ctx;
+	bool *all_dev, all_dev_value = true;
+
+	all_dev = &all_dev_value;
+
+	pr_info("mb: %s() <- %ps(): pdev->name %s/dev->init_name %s populated frm qemu\n",
+		__func__, (void *)_RET_IP_,
+		dev_name(host) ? dev_name(host) : "",
+		host->init_name ? host->init_name : "");
 
 	device_lock_set_class(&pdev->dev, &cxl_root_key);
 	rc = devm_add_action_or_reset(&pdev->dev, cxl_acpi_lock_reset_class,
@@ -654,6 +685,12 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 	if (IS_ERR(root_port))
 		return PTR_ERR(root_port);
 
+	pr_cont("mb: %s() <- %ps(): devices on %s's bus",
+		__func__, (void *)_RET_IP_, adev->dev.bus->name);
+	rc = bus_for_each_dev(adev->dev.bus, NULL, all_dev,
+			      list_bus_dev);
+	pr_cont("\n");
+
 	rc = bus_for_each_dev(adev->dev.bus, NULL, root_port,
 			      add_host_bridge_dport);
 	if (rc < 0)
@@ -668,9 +705,13 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 		.root_port = root_port,
 		.cxl_res = cxl_res,
 	};
+
 	rc = acpi_table_parse_cedt(ACPI_CEDT_TYPE_CFMWS, cxl_parse_cfmws, &ctx);
 	if (rc < 0)
 		return -ENXIO;
+	pr_info("mb: %s() <- %ps(): res.name %s res.start %pa resource_size(res) %llx\n",
+		__func__, (void *)_RET_IP_,
+		cxl_res->name, &cxl_res->start, resource_size(cxl_res));
 
 	rc = add_cxl_resources(cxl_res);
 	if (rc)
