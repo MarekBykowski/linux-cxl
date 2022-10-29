@@ -8,6 +8,8 @@
  * Copyright (c) 2007 Novell Inc.
  */
 
+#define DEBUG
+
 #include <linux/async.h>
 #include <linux/device/bus.h>
 #include <linux/device.h>
@@ -304,6 +306,7 @@ int bus_for_each_dev(struct bus_type *bus, struct device *start,
 }
 EXPORT_SYMBOL_GPL(bus_for_each_dev);
 
+
 /**
  * bus_find_device - device iterator for locating a particular device.
  * @bus: bus type
@@ -445,6 +448,9 @@ int bus_add_device(struct device *dev)
 
 	if (bus) {
 		pr_debug("bus: '%s': add device %s\n", bus->name, dev_name(dev));
+		if (strcmp(bus->name, "cxl") == 0 && 0)
+			pr_info("mb: %s() <- %ps(): bus: '%s': add device %s\n",
+				__func__, (void *)_RET_IP_, bus->name, dev_name(dev));
 		error = device_add_groups(dev, bus->dev_groups);
 		if (error)
 			goto out_put;

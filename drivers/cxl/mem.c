@@ -70,6 +70,7 @@ static int cxl_mem_probe(struct device *dev)
 	if (rc)
 		return rc;
 
+	//dev_info(dev, "mb: %s() <- %ps()\n", __func__, (void *)_RET_IP_);
 	rc = devm_cxl_enumerate_ports(cxlmd);
 	if (rc)
 		return rc;
