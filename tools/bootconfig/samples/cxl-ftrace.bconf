@@ -1,0 +1,11 @@
+kernel {
+      trace_options =  sym-addr, hash-ptr, nofunc_stack_trace, nofunc-no-repeats, notrace_printk
+      #trace_event = "module:*"
+      trace_event = "cxl:*"
+      trace_clock = global
+      trace_buf_size = 2M
+      #ftrace = function_graph
+      #ftrace = function
+      #ftrace_filter = "cxl_parse_cfmws,add_cxl_resources,cxl_acpi_probe"
+      ftrace_filter = ""
+}
