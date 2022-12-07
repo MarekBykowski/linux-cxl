@@ -13,6 +13,7 @@
 #include <linux/rcupdate.h>
 #include <asm/e820/api.h>
 #include <asm/pci_x86.h>
+#include <trace/events/cxl.h>
 
 #define PREFIX "PCI: "
 
@@ -54,6 +55,8 @@ err:		*value = -1;
 		*value = mmio_config_readl(addr + reg);
 		break;
 	}
+
+	trace_cxl_ecam_read(bus, devfn, reg, addr + reg, *value);
 	rcu_read_unlock();
 
 	return 0;
@@ -86,6 +89,7 @@ static int pci_mmcfg_write(unsigned int seg, unsigned int bus,
 		mmio_config_writel(addr + reg, value);
 		break;
 	}
+	trace_cxl_ecam_write(bus, devfn, reg, addr + reg, value);
 	rcu_read_unlock();
 
 	return 0;
