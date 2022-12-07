@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/dmi.h>
 #include <asm/pci_x86.h>
+#include <trace/events/cxl.h>
 
 /*
  * Functions for accessing PCI base (first 256 bytes) and extended
@@ -44,6 +45,7 @@ static int pci_conf1_read(unsigned int seg, unsigned int bus,
 		break;
 	}
 
+	trace_cxl_cam_read(bus, devfn, reg, *value);
 	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
 
 	return 0;
@@ -73,6 +75,7 @@ static int pci_conf1_write(unsigned int seg, unsigned int bus,
 		break;
 	}
 
+	trace_cxl_cam_write(bus, devfn, reg, value);
 	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
 
 	return 0;
@@ -107,7 +110,7 @@ static int pci_conf2_read(unsigned int seg, unsigned int bus,
 	dev = PCI_SLOT(devfn);
 	fn = PCI_FUNC(devfn);
 
-	if (dev & 0x10) 
+	if (dev & 0x10)
 		return PCIBIOS_DEVICE_NOT_FOUND;
 
 	raw_spin_lock_irqsave(&pci_config_lock, flags);
@@ -141,13 +144,13 @@ static int pci_conf2_write(unsigned int seg, unsigned int bus,
 	int dev, fn;
 
 	WARN_ON(seg);
-	if ((bus > 255) || (devfn > 255) || (reg > 255)) 
+	if ((bus > 255) || (devfn > 255) || (reg > 255))
 		return -EINVAL;
 
 	dev = PCI_SLOT(devfn);
 	fn = PCI_FUNC(devfn);
 
-	if (dev & 0x10) 
+	if (dev & 0x10)
 		return PCIBIOS_DEVICE_NOT_FOUND;
 
 	raw_spin_lock_irqsave(&pci_config_lock, flags);
@@ -167,7 +170,7 @@ static int pci_conf2_write(unsigned int seg, unsigned int bus,
 		break;
 	}
 
-	outb(0, 0xCF8);    
+	outb(0, 0xCF8);
 
 	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
 
@@ -264,7 +267,7 @@ void __init pci_direct_init(int type)
 {
 	if (type == 0)
 		return;
-	printk(KERN_INFO "PCI: Using configuration type %d for base access\n",
+	printk(KERN_INFO "mb: PCI: Using configuration type %d for base access\n",
 		 type);
 	if (type == 1) {
 		raw_pci_ops = &pci_direct_conf1;
