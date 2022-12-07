@@ -171,6 +171,10 @@ static int cxl_parse_cfmws(union acpi_subtable_headers *header, void *arg,
 		dev_name(&cxld->dev),
 		phys_to_target_node(cxld->hpa_range.start),
 		cxld->hpa_range.start, cxld->hpa_range.end);
+	trace_printk("mb: add: %s node: %d range [%#llx - %#llx]\n",
+		dev_name(&cxld->dev),
+		phys_to_target_node(cxld->hpa_range.start),
+		cxld->hpa_range.start, cxld->hpa_range.end);
 
 	return 0;
 
@@ -264,9 +268,10 @@ static int list_bus_dev(struct device *dev, void *arg)
 	bool all_dev = *(bool *)arg;
 
 	//sysfs_streq
-	if (all_dev)
+	if (all_dev) {
 		pr_cont(" %s", dev_name(dev));
-	else
+		trace_printk("  %s\n", dev_name(dev));
+	} else
 		if (strcmp(acpi_device_hid(bridge), "ACPI0016") == 0)
 			pr_cont(" %s", dev_name(dev));
 
@@ -482,6 +487,9 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 		__func__, (void *)_RET_IP_,
 		dev_name(host) ? dev_name(host) : "",
 		host->init_name ? host->init_name : "");
+	trace_printk("mb: pdev->name %s/dev->init_name %s populated frm qemu\n",
+		dev_name(host) ? dev_name(host) : "", 
+		host->init_name ? host->init_name : "");
 
 	device_lock_set_class(&pdev->dev, &cxl_root_key);
 	rc = devm_add_action_or_reset(&pdev->dev, cxl_acpi_lock_reset_class,
@@ -504,6 +512,7 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 
 	pr_cont("mb: %s() <- %ps(): devices on %s's bus",
 		__func__, (void *)_RET_IP_, adev->dev.bus->name);
+	pr_cont("mb: devices on %s's bus", adev->dev.bus->name);
 	rc = bus_for_each_dev(adev->dev.bus, NULL, all_dev,
 			      list_bus_dev);
 	pr_cont("\n");
@@ -526,9 +535,11 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 	rc = acpi_table_parse_cedt(ACPI_CEDT_TYPE_CFMWS, cxl_parse_cfmws, &ctx);
 	if (rc < 0)
 		return -ENXIO;
-	pr_info("mb: %s() <- %ps(): res.name %s res.start %pa resource_size(res) %llx\n",
+	pr_info("mb: %s() <- %ps(): parse CFMWS res.name %s res.start %pa resource_size(res) %llx\n",
 		__func__, (void *)_RET_IP_,
-		cxl_res->name, &cxl_res->start, resource_size(cxl_res));
+		cxl_res->child->name, &cxl_res->child->start, resource_size(cxl_res->child));
+	trace_printk("mb: parse CFMWS: res.name %s res.start %pa resource_size(res) %llx\n",
+		cxl_res->child->name, &cxl_res->child->start, resource_size(cxl_res->child));
 
 	rc = add_cxl_resources(cxl_res);
 	if (rc)
