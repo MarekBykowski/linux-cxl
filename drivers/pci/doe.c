@@ -10,6 +10,8 @@
  *	Ira Weiny <ira.weiny@intel.com>
  */
 
+#define DEBUG
+
 #define dev_fmt(fmt) "DOE: " fmt
 
 #include <linux/bitfield.h>
@@ -20,6 +22,10 @@
 #include <linux/pci-doe.h>
 #include <linux/workqueue.h>
 
+#include <trace/events/cxl.h> /* for tracepoints*/
+#include <linux/trace.h> /* for manipulating trace events, ftrce*/
+#include <linux/sched/debug.h> /*for trace call*/
+
 #define PCI_DOE_PROTOCOL_DISCOVERY 0
 
 /* Timeout of 1 second from 6.30.2 Operation, PCI Spec r6.0 */
@@ -28,30 +34,6 @@
 
 #define PCI_DOE_FLAG_CANCEL	0
 #define PCI_DOE_FLAG_DEAD	1
-
-/**
- * struct pci_doe_mb - State for a single DOE mailbox
- *
- * This state is used to manage a single DOE mailbox capability.  All fields
- * should be considered opaque to the consumers and the structure passed into
- * the helpers below after being created by devm_pci_doe_create()
- *
- * @pdev: PCI device this mailbox belongs to
- * @cap_offset: Capability offset
- * @prots: Array of protocols supported (encoded as long values)
- * @wq: Wait queue for work item
- * @work_queue: Queue of pci_doe_work items
- * @flags: Bit array of PCI_DOE_FLAG_* flags
- */
-struct pci_doe_mb {
-	struct pci_dev *pdev;
-	u16 cap_offset;
-	struct xarray prots;
-
-	wait_queue_head_t wq;
-	struct workqueue_struct *work_queue;
-	unsigned long flags;
-};
 
 static int pci_doe_wait(struct pci_doe_mb *doe_mb, unsigned long timeout)
 {
@@ -76,6 +58,8 @@ static int pci_doe_abort(struct pci_doe_mb *doe_mb)
 	int offset = doe_mb->cap_offset;
 	unsigned long timeout_jiffies;
 
+	trace_printk("mb: [%s-%s-%x] Issuing Abort\n",
+	   	     dev_driver_string(&pdev->dev), dev_name(&pdev->dev), offset);
 	pci_dbg(pdev, "[%x] Issuing Abort\n", offset);
 
 	timeout_jiffies = jiffies + PCI_DOE_TIMEOUT;
@@ -98,6 +82,8 @@ static int pci_doe_abort(struct pci_doe_mb *doe_mb)
 	} while (!time_after(jiffies, timeout_jiffies));
 
 	/* Abort has timed out and the MB is dead */
+	trace_printk("mb: [%s-%s-%x] ABORT timed out\n",
+	   	     dev_driver_string(&pdev->dev), dev_name(&pdev->dev), offset);
 	pci_err(pdev, "[%x] ABORT timed out\n", offset);
 	return -EIO;
 }
@@ -132,6 +118,12 @@ static int pci_doe_send_req(struct pci_doe_mb *doe_mb,
 			       FIELD_PREP(PCI_DOE_DATA_OBJECT_HEADER_2_LENGTH,
 					  2 + task->request_pl_sz /
 						sizeof(u32)));
+
+	trace_printk("mb: doe_vid=%x doe_type=%x doe_length=%u",
+		     task->prot.vid, task->prot.type,
+		     FIELD_PREP(PCI_DOE_DATA_OBJECT_HEADER_2_LENGTH,
+		     2 + task->request_pl_sz / sizeof(u32)));
+
 	for (i = 0; i < task->request_pl_sz / sizeof(u32); i++)
 		pci_write_config_dword(pdev, offset + PCI_DOE_WRITE,
 				       task->request_pl[i]);
@@ -188,6 +180,8 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 	for (i = 0; i < payload_length; i++) {
 		pci_read_config_dword(pdev, offset + PCI_DOE_READ,
 				      &task->response_pl[i]);
+		//trace_printk("mb: [%d] response payload: %x\n",
+		//	     i, task->response_pl[i]);
 		/* Prior to the last ack, ensure Data Object Ready */
 		if (i == (payload_length - 1) && !pci_doe_data_obj_ready(doe_mb))
 			return -EIO;
@@ -292,6 +286,8 @@ retry_resp:
 		return;
 	}
 
+	trace_cxl_doe_sumbit_task(task);
+
 	signal_task_complete(task, rc);
 }
 
@@ -342,11 +338,20 @@ static void *pci_doe_xa_prot_entry(u16 vid, u8 prot)
 	return xa_mk_value((vid << 8) | prot);
 }
 
+extern int trace_set_options(struct trace_array *tr, char *option);
+extern struct trace_array *get_global_trace(void);
 static int pci_doe_cache_protocols(struct pci_doe_mb *doe_mb)
 {
 	u8 index = 0;
 	u8 xa_idx = 0;
+	struct pci_dev *pdev = doe_mb->pdev;
 
+	char buf[64] = "trace_printk";
+	int ret;
+
+	tracing_on();
+	ret = trace_set_options(get_global_trace(), buf);
+	WARN(ret < 0, "setting trace_printk failed\n");
 	do {
 		int rc;
 		u16 vid;
@@ -357,14 +362,18 @@ static int pci_doe_cache_protocols(struct pci_doe_mb *doe_mb)
 			return rc;
 
 		pci_dbg(doe_mb->pdev,
-			"[%x] Found protocol %d vid: %x prot: %x\n",
+			"[%x] Found protocol index: %d vid: %x prot: %x\n",
 			doe_mb->cap_offset, xa_idx, vid, prot);
+		trace_printk("mb: [%s-%s-%x] Found protocol index: %d vid: %x prot: %x\n",
+			     dev_driver_string(&pdev->dev), dev_name(&pdev->dev), doe_mb->cap_offset,
+			     xa_idx, vid, prot);
 
 		rc = xa_insert(&doe_mb->prots, xa_idx++,
 			       pci_doe_xa_prot_entry(vid, prot), GFP_KERNEL);
 		if (rc)
 			return rc;
 	} while (index);
+	tracing_off();
 
 	return 0;
 }
@@ -443,6 +452,8 @@ struct pci_doe_mb *pcim_doe_create_mb(struct pci_dev *pdev, u16 cap_offset)
 		return ERR_PTR(rc);
 
 	/* Reset the mailbox by issuing an abort */
+	trace_printk("mb: [%s-%s-%x] Reset the mailbox by issuing an abort\n",
+	   	     dev_driver_string(&pdev->dev), dev_name(&pdev->dev), cap_offset);
 	rc = pci_doe_abort(doe_mb);
 	if (rc) {
 		pci_err(pdev, "[%x] failed to reset mailbox with abort command : %d\n",
@@ -495,6 +506,8 @@ bool pci_doe_supports_prot(struct pci_doe_mb *doe_mb, u16 vid, u8 type)
 }
 EXPORT_SYMBOL_GPL(pci_doe_supports_prot);
 
+extern void trace_call(struct task_struct *task, unsigned long *sp, int depth,
+		       const char *loglvl);
 /**
  * pci_doe_submit_task() - Submit a task to be processed by the state machine
  *
@@ -516,6 +529,9 @@ int pci_doe_submit_task(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
 {
 	if (!pci_doe_supports_prot(doe_mb, task->prot.vid, task->prot.type))
 		return -EINVAL;
+
+	pr_info("mb:mb:showing trace\n");
+	trace_call(NULL, NULL, 5, KERN_INFO);
 
 	/*
 	 * DOE requests must be a whole number of DW and the response needs to

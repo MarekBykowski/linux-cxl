@@ -3513,6 +3513,12 @@ int trace_array_printk(struct trace_array *tr,
 }
 EXPORT_SYMBOL_GPL(trace_array_printk);
 
+struct trace_array *get_global_trace(void)
+{
+	return &global_trace;
+}
+
+
 /**
  * trace_array_init_printk - Initialize buffers for trace_array_printk()
  * @tr: The trace array to initialize the buffers for

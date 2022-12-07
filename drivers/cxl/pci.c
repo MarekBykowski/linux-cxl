@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright(c) 2020 Intel Corporation. All rights reserved. */
+
+#define DEBUG
+
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/moduleparam.h>
 #include <linux/module.h>
@@ -13,6 +16,15 @@
 #include "cxlmem.h"
 #include "cxlpci.h"
 #include "cxl.h"
+
+#include <linux/trace.h> /* for manipulating trace events, ftrce*/
+#include <linux/sched/debug.h> /*for trace call*/
+#include <trace/events/cxl.h> /* for trace events */
+
+extern void trace_call(struct task_struct *task, unsigned long *sp, int depth, const char *loglvl);
+extern int trace_set_options(struct trace_array *tr, char *option);
+extern struct trace_array *get_global_trace(void);
+extern int trace_set_clr_event(const char *system, const char *event, int set);
 
 /**
  * DOC: cxl pci
@@ -109,14 +121,17 @@ static int cxl_pci_mbox_wait_for_doorbell(struct cxl_dev_state *cxlds)
 static int __cxl_pci_mbox_send_cmd(struct cxl_dev_state *cxlds,
 				   struct cxl_mbox_cmd *mbox_cmd)
 {
+	//mb: mailbox gets implemented here
 	void __iomem *payload = cxlds->regs.mbox + CXLDEV_MBOX_PAYLOAD_OFFSET;
 	struct device *dev = cxlds->dev;
-	u64 cmd_reg, status_reg;
+	u64 cmd_reg, cmd_reg_intact, status_reg;
 	size_t out_len;
 	int rc;
 
 	lockdep_assert_held(&cxlds->mbox_mutex);
 
+	//dev_dbg(dev, "mb:mb:showing trace\n");
+	//trace_call(NULL, NULL, 5, KERN_INFO);
 	/*
 	 * Here are the steps from 8.2.8.4 of the CXL 2.0 spec.
 	 *   1. Caller reads MB Control Register to verify doorbell is clear
@@ -134,6 +149,15 @@ static int __cxl_pci_mbox_send_cmd(struct cxl_dev_state *cxlds,
 	 * also happen in any order (though some orders might not make sense).
 	 */
 
+#if 0
+	u16 opcode;
+	void *payload_in;
+	void *payload_out;
+	size_t size_in;
+	size_t size_out;
+	u16 return_code;
+	trace_cmd("opcode")
+#endif
 	/* #1 */
 	if (cxl_doorbell_busy(cxlds)) {
 		u64 md_status =
@@ -144,7 +168,7 @@ static int __cxl_pci_mbox_send_cmd(struct cxl_dev_state *cxlds,
 		return -EBUSY;
 	}
 
-	cmd_reg = FIELD_PREP(CXLDEV_MBOX_CMD_COMMAND_OPCODE_MASK,
+	cmd_reg_intact = cmd_reg = FIELD_PREP(CXLDEV_MBOX_CMD_COMMAND_OPCODE_MASK,
 			     mbox_cmd->opcode);
 	if (mbox_cmd->size_in) {
 		if (WARN_ON(!mbox_cmd->payload_in))
@@ -203,6 +227,8 @@ static int __cxl_pci_mbox_send_cmd(struct cxl_dev_state *cxlds,
 	} else {
 		mbox_cmd->size_out = 0;
 	}
+
+	trace_cxl_mbox_send_cmd(dev, mbox_cmd);
 
 	return 0;
 }
@@ -398,6 +424,7 @@ static void devm_cxl_pci_create_doe(struct cxl_dev_state *cxlds)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	u16 off = 0;
 
+	printk("mb: create doe\n");
 	xa_init(&cxlds->doe_mbs);
 	if (devm_add_action(&pdev->dev, cxl_pci_destroy_doe, &cxlds->doe_mbs)) {
 		dev_err(dev, "Failed to create XArray for DOE's\n");
@@ -411,6 +438,9 @@ static void devm_cxl_pci_create_doe(struct cxl_dev_state *cxlds)
 	pci_doe_for_each_off(pdev, off) {
 		struct pci_doe_mb *doe_mb;
 
+		trace_printk("mb: create mbox: driver-device-doe_offset %s-%s-%x\n",
+			     dev_driver_string(&pdev->dev), dev_name(&pdev->dev),
+			     off);
 		doe_mb = pcim_doe_create_mb(pdev, off);
 		if (IS_ERR(doe_mb)) {
 			dev_err(dev, "Failed to create MB object for MB @ %x\n",
@@ -434,6 +464,9 @@ static int cxl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct cxl_memdev *cxlmd;
 	struct cxl_dev_state *cxlds;
 	int rc;
+
+	pr_info("mb: %s() probed for %s\n",
+		__func__, dev_name(&pdev->dev));
 
 	/*
 	 * Double check the anonymous union trickery in struct cxl_regs
@@ -476,6 +509,28 @@ static int cxl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	cxlds->component_reg_phys = cxl_regmap_to_base(pdev, &map);
 
+	{
+#if 0
+	char buf[64] = "trace_printk";
+	int ret;
+
+	tracing_on();
+	ret = trace_set_options(get_global_trace(), buf);
+	WARN(ret < 0, "setting trace_printk failed\n");
+
+	ret =0;
+	ret = trace_set_clr_event("cxl", "cxl_ecam_read", 1);
+	ret = ret | trace_set_clr_event("cxl", "cxl_ecam_write", 1);
+	ret = ret | trace_set_clr_event("cxl", "cxl_cam_read", 1);
+	ret = ret | trace_set_clr_event("cxl", "cxl_cam_write", 1);
+	WARN(ret < 0, "setting cxl events failed\n");
+
+	pr_info("FIELD_GET(GENMASK_ULL(15,8), 0xf) %llx "
+		"FIELD_GET(GENMASK_ULL(15,8), 0xc00) %llx\n",
+		FIELD_GET(GENMASK_ULL(15,8), 0xf),
+		FIELD_GET(GENMASK_ULL(15,8), 0xc00));
+#endif
+
 	devm_cxl_pci_create_doe(cxlds);
 
 	rc = cxl_pci_setup_mailbox(cxlds);
@@ -493,6 +548,10 @@ static int cxl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	rc = cxl_mem_create_range_info(cxlds);
 	if (rc)
 		return rc;
+#if 0
+	tracing_off();
+#endif
+	}
 
 	cxlmd = devm_cxl_add_memdev(cxlds);
 	if (IS_ERR(cxlmd))
