@@ -856,6 +856,8 @@ int devm_cxl_enumerate_decoders(struct cxl_hdm *cxlhdm)
 		pr_info("mb: %s() <- %ps(): success adding decoder to port %s\n",
 			__func__, (void *)_RET_IP_,
 			dev_name(&port->dev));
+		trace_printk("mb: success adding decoder to port %s\n",
+			dev_name(&port->dev));
 	}
 
 	return 0;

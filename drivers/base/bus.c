@@ -448,9 +448,12 @@ int bus_add_device(struct device *dev)
 
 	if (bus) {
 		pr_debug("bus: '%s': add device %s\n", bus->name, dev_name(dev));
-		if (strcmp(bus->name, "cxl") == 0 && 0)
+		if (strcmp(bus->name, "cxl") == 0 && 0) {
 			pr_info("mb: %s() <- %ps(): bus: '%s': add device %s\n",
 				__func__, (void *)_RET_IP_, bus->name, dev_name(dev));
+			trace_printk("mb: bus: '%s': add device %s",
+				bus->name, dev_name(dev));
+		}
 		error = device_add_groups(dev, bus->dev_groups);
 		if (error)
 			goto out_put;

@@ -690,6 +690,12 @@ static struct cxl_port *__devm_cxl_add_port(struct device *host,
 		parent_dport ? " to " : "",
 		parent_dport ? dev_name(parent_dport->dport) : "",
 		parent_dport ? "" : " (root port)");
+	trace_printk("mb: host device %s: add cxl port device %s: %s%s%s\n",
+		dev_name(host) ? dev_name(host) : host->init_name,
+		dev_name(&port->dev),
+		parent_dport ? " to " : "",
+		parent_dport ? dev_name(parent_dport->dport) : "",
+		parent_dport ? "" : " (root port)");
 
 #if 0
 	dev_dbg(uport, "mb: %s added%s%s%s\n",
@@ -876,6 +882,9 @@ static int add_dport(struct cxl_port *port, struct cxl_dport *new)
 
 	pr_info("mb: %s() <- %ps(): add dport %s to uport %s\n",
 		__func__, (void *)_RET_IP_,
+		dev_name(new->dport),
+		dev_name(port->uport));
+	trace_printk("mb: add dport %s to uport %s\n",
 		dev_name(new->dport),
 		dev_name(port->uport));
 
@@ -1422,6 +1431,10 @@ retry:
 			dev_name(iter), dev_name(iter->parent),
 			dev_name(iter->parent->parent),
 			dev_name(iter->parent->parent->parent));
+		trace_printk("mb: dev %s parent %s grandparent %s grand-grandparent %s\n",
+			dev_name(iter), dev_name(iter->parent),
+			dev_name(iter->parent->parent),
+			dev_name(iter->parent->parent->parent));
 
 		if (!dport_dev)
 			return 0;
@@ -1440,6 +1453,8 @@ retry:
 
 		pr_info("mb: %s() from %ps(): find_cxl_port() returned port %s\n",
 			__func__, (void *)_RET_IP_,
+			port ? dev_name(&port->dev) : "NULL");
+		trace_printk("mb: find_cxl_port() returned port %s\n",
 			port ? dev_name(&port->dev) : "NULL");
 
 		if (port) {
@@ -1983,7 +1998,6 @@ static __init int cxl_core_init(void)
 		rc = -ENOMEM;
 		goto err_wq;
 	}
-	show_all_workqueues();
 
 	rc = bus_register(&cxl_bus_type);
 	if (rc)
