@@ -30,7 +30,7 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/cxl.h>
 
-static bool intel_vsec_walk_dvsec(struct pci_dev *pdev, unsigned long quirks)
+static bool intel_walk_dvsec(struct pci_dev *pdev, unsigned long quirks)
 {
 	u16 p = 0;
 	bool p_found = false;
@@ -42,7 +42,7 @@ static bool intel_vsec_walk_dvsec(struct pci_dev *pdev, unsigned long quirks)
 		struct cxl_endpoint_dvsec_info info = { 0 };
 		int ranges = 0, i, hdm_count;
 
-		p = pci_find_next_ext_capability(pdev, p, PCI_EXT_CAP_ID_DVSEC); 
+		p = pci_find_next_ext_capability(pdev, p, PCI_EXT_CAP_ID_DVSEC);
 		if (!p)
 			break;
 
@@ -117,6 +117,35 @@ static bool intel_vsec_walk_dvsec(struct pci_dev *pdev, unsigned long quirks)
 	return 0;
 }
 
+static bool intel_walk_doe(struct pci_dev *pdev, unsigned long quirks)
+{
+	u16 p = 0;
+	u32 header, cap, ctrl, status;
+	bool p_found = false;
+	struct device *dev = &pdev->dev;
+
+	while ((p = pci_find_next_ext_capability(pdev, p, PCI_EXT_CAP_ID_DOE))) {
+		p_found = true;
+		pci_read_config_dword(pdev, p + PCI_DOE_CAP, &header);
+		pci_read_config_dword(pdev, p + PCI_DOE_CAP, &cap);
+		pci_read_config_dword(pdev, p + PCI_DOE_CTRL, &ctrl);
+		pci_read_config_dword(pdev, p + PCI_DOE_STATUS, &status);
+		dev_info(dev, "\tdoe at %x\n", p);
+		dev_info(dev, "\t\theader %x\n", header);
+		dev_info(dev, "\t\tcap %x\n", cap);
+		dev_info(dev, "\t\tctrl %x\n", ctrl);
+		dev_info(dev, "\t\tstatu %x\n", status);
+		dev_info(dev, "\t\tnot touching read/write and it will affect dev\n");
+	}
+
+	if (!p_found) {
+		dev_warn(dev, "\tDevice DOE not present\n");
+		return EINVAL;
+	}
+
+	return 0;
+}
+
 static int intel_vsec_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	int rc;
@@ -125,7 +154,8 @@ static int intel_vsec_pci_probe(struct pci_dev *pdev, const struct pci_device_id
 	if (rc)
 		return rc;
 
-	intel_vsec_walk_dvsec(pdev, 0);
+	intel_walk_dvsec(pdev, 0);
+	intel_walk_doe(pdev, 0);
 
 	return 0;
 }
