@@ -11,7 +11,6 @@
 #include <linux/pci.h>
 #include "cxlpci.h"
 #include "cxl.h"
-#include "linux/intel_extender.h"
 
 static unsigned long cfmws_to_decoder_flags(int restrictions)
 {
