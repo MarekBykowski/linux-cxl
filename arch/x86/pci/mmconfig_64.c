@@ -26,6 +26,7 @@ static char __iomem *pci_dev_base(unsigned int seg, unsigned int bus, unsigned i
 	return NULL;
 }
 
+extern void trace_call(struct task_struct *task, unsigned long *sp, int depth, const char *loglvl);
 static int pci_mmcfg_read(unsigned int seg, unsigned int bus,
 			  unsigned int devfn, int reg, int len, u32 *value)
 {
@@ -55,6 +56,7 @@ err:		*value = -1;
 		*value = mmio_config_readl(addr + reg);
 		break;
 	}
+	//trace_call(NULL, NULL, 5, KERN_INFO);
 
 	trace_cxl_ecam_read(bus, devfn, reg, addr + reg, *value);
 	rcu_read_unlock();
