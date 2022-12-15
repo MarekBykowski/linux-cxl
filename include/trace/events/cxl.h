@@ -28,9 +28,10 @@ TRACE_EVENT(cxl_cam_write,
 		__entry->value = value;
 	),
 	/* b:fn am w val */
-	TP_printk("b:fn=%x:%x reg=%x access=cam -> %x",
+	TP_printk("%x:%x:%x reg=%x access=cam -> %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->value
 	)
@@ -52,9 +53,10 @@ TRACE_EVENT(cxl_cam_read,
 		__entry->value = value;
 	),
 	/* b:fn am w val */
-	TP_printk("b:fn=%x:%x reg=%x access=cam <- %x",
+	TP_printk("%x:%x:%x reg=%x access=cam <- %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->value
 	)
@@ -77,9 +79,10 @@ TRACE_EVENT(cxl_ecam_write,
 		__entry->addr = addr;
 		__entry->value = value;
 	),
-	TP_printk("b:fn=%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx -> %x",
+	TP_printk("%x:%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx -> %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->addr,
 		is_vmalloc_addr(__entry->addr) ?
@@ -107,9 +110,10 @@ TRACE_EVENT(cxl_ecam_read,
 		__entry->value = value;
 	),
 	/* vmalloc_to_pfn */
-	TP_printk("b:fn=%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx <- %x",
+	TP_printk("%x:%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx <- %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->addr,
 		is_vmalloc_addr(__entry->addr) ?
