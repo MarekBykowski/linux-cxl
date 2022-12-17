@@ -104,7 +104,6 @@ TRACE_EVENT(cxl_aer_correctable_error,
 	)
 );
 
-#include <linux/tracepoint.h>
 #include <linux/pci-doe.h>
 
 struct cxl_mbox_cmd;

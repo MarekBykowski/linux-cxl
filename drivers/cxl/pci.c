@@ -22,7 +22,6 @@
 
 #include <linux/trace.h> /* for manipulating trace events, ftrce*/
 #include <linux/sched/debug.h> /*for trace call*/
-#include <trace/events/cxl.h> /* for trace events */
 
 extern void trace_call(struct task_struct *task, unsigned long *sp, int depth, const char *loglvl);
 extern int trace_set_options(struct trace_array *tr, char *option);

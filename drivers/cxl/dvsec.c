@@ -27,7 +27,9 @@
 #include "cxlpci.h"
 #include "cxlmem.h"
 
-#define CREATE_TRACE_POINTS
+// ONLY ONE DEFINITION per tracepoint
+// unlimitted number of includes
+//#define CREATE_TRACE_POINTS
 #include <trace/events/cxl.h>
 
 static bool intel_walk_dvsec(struct pci_dev *pdev, unsigned long quirks)
