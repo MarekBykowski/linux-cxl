@@ -2,14 +2,13 @@ kernel {
       trace_options = sym-addr, hash-ptr, nofunc_stack_trace, nofunc-no-repeats, notrace_printk
       #trace_options = notrace_printk, hash-ptr, nofuncgraph-overrun, funcgraph-cpu, funcgraph-overhead, nofuncgraph-proc, funcgraph-duration, nofuncgraph-abstime, funcgraph-irqs, nofuncgraph-tail, sleep-time
       #trace_event = "module:*"
-      trace_event = "cxl_mbox_send_cmd,cxl_mbox_send_cmd_advanced"
-      #trace_event = "cxl_doe_sumbit_task"
+      trace_event = "cxl_doe_sumbit_task"
       trace_clock = global
       trace_buf_size = 4099KB
-      ftrace = function_graph
+      #ftrace = function_graph
       #max_graph_depth = 6
       #fgraph_max_depth = 3
-      ftrace_graph_max_depth = 6
+      #ftrace_graph_max_depth = 6
       #ftrace = function
       #ftrace_filter = "cxl_parse_cfmws,add_cxl_resources,cxl_acpi_probe"
       #ftrace_filter = "cxl_pci_mbox_send,cxl_mbox_send_cmd,__,traceiter_cxl_mbox_send_cmd,cxl_enumerate_cmds,cxl_dev_state_identify,cxl_pmem_ctl,cxl_cdat_get_length,cxl_cdat_read_table"
