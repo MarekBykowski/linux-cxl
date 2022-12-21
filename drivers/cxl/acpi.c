@@ -470,6 +470,27 @@ static int pair_cxl_resource(struct device *dev, void *data)
 	return 0;
 }
 
+static struct resource *next_resource(struct resource *p)
+{
+	if (p->child)
+		return p->child;
+	while (!p->sibling && p->parent)
+		p = p->parent;
+	return p->sibling;
+}
+
+static struct resource *next_resource_skip_children(struct resource *p)
+{
+	while (!p->sibling && p->parent)
+		p = p->parent;
+	return p->sibling;
+}
+
+#define for_each_resource(_root, _p, _skip_children) \
+	for ((_p) = (_root)->child; (_p); \
+	     (_p) = (_skip_children) ? next_resource_skip_children(_p) : \
+				       next_resource(_p))
+
 static int cxl_acpi_probe(struct platform_device *pdev)
 {
 	int rc;
@@ -487,7 +508,7 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 		dev_name(host) ? dev_name(host) : "",
 		host->init_name ? host->init_name : "");
 	trace_printk("mb: pdev->name %s/dev->init_name %s populated frm qemu\n",
-		dev_name(host) ? dev_name(host) : "", 
+		dev_name(host) ? dev_name(host) : "",
 		host->init_name ? host->init_name : "");
 
 	device_lock_set_class(&pdev->dev, &cxl_root_key);
@@ -534,11 +555,25 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 	rc = acpi_table_parse_cedt(ACPI_CEDT_TYPE_CFMWS, cxl_parse_cfmws, &ctx);
 	if (rc < 0)
 		return -ENXIO;
+
+#if 0
 	pr_info("mb: %s() <- %ps(): parse CFMWS res.name %s res.start %pa resource_size(res) %llx\n",
 		__func__, (void *)_RET_IP_,
 		cxl_res->child->name, &cxl_res->child->start, resource_size(cxl_res->child));
 	trace_printk("mb: parse CFMWS: res.name %s res.start %pa resource_size(res) %llx\n",
 		cxl_res->child->name, &cxl_res->child->start, resource_size(cxl_res->child));
+#endif
+	{
+	struct resource *p;
+	bool skip_children = false;
+
+	for_each_resource(ctx.cxl_res, p, skip_children) {
+		pr_info("mb p->name=%s p->start=%pa resource_size(p)=%llx\n",
+			p->name, &p->start, resource_size(p));
+		trace_printk("mb p->name=%s p->start=%pa resource_size(p)=%llx\n",
+			p->name, &p->start, resource_size(p));
+	}
+	}
 
 	rc = add_cxl_resources(cxl_res);
 	if (rc)
