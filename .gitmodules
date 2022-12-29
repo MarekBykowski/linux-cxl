@@ -1,0 +1,3 @@
+[submodule "linux-cxl-apps"]
+	path = linux-cxl-apps
+	url = https://github.com/MarekBykowski/linux-cxl-apps.git
