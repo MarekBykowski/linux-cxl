@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright(c) 2020 Intel Corporation. All rights reserved. */
+
+#define DEBUG
+
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/security.h>
 #include <linux/debugfs.h>
@@ -495,6 +498,8 @@ static int handle_mailbox_cmd_from_user(struct cxl_dev_state *cxlds,
 		cxl_mem_opcode_to_name(mbox_cmd->opcode),
 		mbox_cmd->opcode, mbox_cmd->size_in);
 
+	/* cxlds->mbox_send should tell cxl_pci_mbox_send() */
+	dev_dbg(dev, "cxlds->mbox_send %ps\n", cxlds->mbox_send);
 	rc = cxlds->mbox_send(cxlds, mbox_cmd);
 	if (rc)
 		goto out;
