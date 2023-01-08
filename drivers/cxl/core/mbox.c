@@ -7,6 +7,7 @@
 #include <linux/security.h>
 #include <linux/debugfs.h>
 #include <linux/mutex.h>
+#include <linux/pci.h> /* for to_pci_dev */
 #include <cxlmem.h>
 #include <cxl.h>
 
@@ -550,6 +551,46 @@ int cxl_send_cmd(struct cxl_memdev *cxlmd, struct cxl_send_command __user *s)
 		return rc;
 
 	if (copy_to_user(s, &send, sizeof(send)))
+		return -EFAULT;
+
+	return 0;
+}
+
+int cxl_space_config(struct cxl_memdev *cxlmd, struct cxl_pdev_config __user *s)
+{
+	struct cxl_dev_state *cxlds = cxlmd->cxlds;
+	struct device *dev = cxlds->dev;
+	struct pci_dev *pdev = to_pci_dev(dev);
+	int rc;
+	struct cxl_pdev_config config;
+	u16 p = 0;
+
+	dev_dbg(dev, "Config space IOCTL\n");
+
+	/*
+	 * For a quick prototyping - find first DOE instance on a device and
+	 * work on it.
+	 */
+	while ((p = pci_find_next_ext_capability(pdev, p, PCI_EXT_CAP_ID_DOE)))
+		break;
+
+	p ? dev_dbg(dev, "doe @ %x\n", p) :
+		({ dev_err(dev, "doe not present\n"); return 0; });
+
+	rc = copy_from_user(&config, s, sizeof(config));
+	if (rc)
+	        return -EFAULT;
+
+	if (config.is_write) {
+		pci_write_config_dword(pdev, p + config.offset, config.val);
+		config.retval = 0;
+	} else {
+		pci_read_config_dword(pdev, p + config.offset, &config.val);
+		config.retval = 0;
+	}
+
+	rc = copy_to_user(s, &config, sizeof(config));
+	if (rc)
 		return -EFAULT;
 
 	return 0;

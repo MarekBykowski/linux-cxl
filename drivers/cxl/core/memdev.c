@@ -271,12 +271,11 @@ static long __cxl_memdev_ioctl(struct cxl_memdev *cxlmd, unsigned int cmd,
 {
 	switch (cmd) {
 	case CXL_MEM_QUERY_COMMANDS:
-		pr_info("mb: CXL_MEM_QUERY_COMMANDS %lx CXL_MEM_SEND_COMMAND %lx\n",
-			CXL_MEM_QUERY_COMMANDS, CXL_MEM_SEND_COMMAND);
 		return cxl_query_cmd(cxlmd, (void __user *)arg);
 	case CXL_MEM_SEND_COMMAND:
-		pr_info("mb: CXL_MEM_SEND_COMMAND %lx\n", CXL_MEM_SEND_COMMAND);
 		return cxl_send_cmd(cxlmd, (void __user *)arg);
+	case CXL_MEM_CONFIG_WR:
+		return cxl_space_config(cxlmd, (void __user *)arg);
 	default:
 		return -ENOTTY;
 	}
