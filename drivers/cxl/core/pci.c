@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright(c) 2021 Intel Corporation. All rights reserved. */
+
+#define DEBUG
+
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/device.h>
 #include <linux/delay.h>
@@ -565,6 +568,7 @@ static int cxl_cdat_read_table(struct device *dev,
 		entry_handle = FIELD_GET(CXL_DOE_TABLE_ACCESS_ENTRY_HANDLE,
 					 t.response_pl[0]);
 		entry = t.response_pl + 1;
+		dev_dbg(dev, "entry (t.response_pl + 1) %x\n", *entry);
 		entry_dw = t.task.rv / sizeof(u32);
 		/* Skip Header */
 		entry_dw -= 1;

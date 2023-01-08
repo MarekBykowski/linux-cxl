@@ -124,9 +124,17 @@ static int pci_doe_send_req(struct pci_doe_mb *doe_mb,
 		     FIELD_PREP(PCI_DOE_DATA_OBJECT_HEADER_2_LENGTH,
 		     2 + task->request_pl_sz / sizeof(u32)));
 
-	for (i = 0; i < task->request_pl_sz / sizeof(u32); i++)
+	dev_dbg(&pdev->dev, "mb: doe_vid=%x doe_type=%x doe_length=%u",
+		task->prot.vid, task->prot.type,
+		FIELD_PREP(PCI_DOE_DATA_OBJECT_HEADER_2_LENGTH,
+		2 + task->request_pl_sz / sizeof(u32)));
+
+	for (i = 0; i < task->request_pl_sz / sizeof(u32); i++) {
 		pci_write_config_dword(pdev, offset + PCI_DOE_WRITE,
 				       task->request_pl[i]);
+		dev_dbg(&pdev->dev, "mb: task->request_pl[%d]=%x",
+			i, task->request_pl[i]);
+	}
 
 	pci_doe_write_ctrl(doe_mb, PCI_DOE_CTRL_GO);
 
@@ -173,6 +181,8 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 	if (length > SZ_1M || length < 2)
 		return -EIO;
 
+	dev_dbg(&pdev->dev, "mb: doe rsp length %zu\n", length);
+
 	/* First 2 dwords have already been read */
 	length -= 2;
 	payload_length = min(length, task->response_pl_sz / sizeof(u32));
@@ -180,8 +190,8 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 	for (i = 0; i < payload_length; i++) {
 		pci_read_config_dword(pdev, offset + PCI_DOE_READ,
 				      &task->response_pl[i]);
-		//trace_printk("mb: [%d] response payload: %x\n",
-		//	     i, task->response_pl[i]);
+		dev_dbg(&pdev->dev, "mb: task->response_pl[%d]: %x\n",
+			i, task->response_pl[i]);
 		/* Prior to the last ack, ensure Data Object Ready */
 		if (i == (payload_length - 1) && !pci_doe_data_obj_ready(doe_mb))
 			return -EIO;
