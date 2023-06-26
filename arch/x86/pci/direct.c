@@ -45,7 +45,8 @@ static int pci_conf1_read(unsigned int seg, unsigned int bus,
 		break;
 	}
 
-	trace_cxl_cam_read(bus, devfn, reg, *value);
+	if (bus == 0x35 && devfn == 0)
+		trace_pci_config_direct_read(bus, devfn, reg, *value);
 	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
 
 	return 0;
@@ -75,7 +76,8 @@ static int pci_conf1_write(unsigned int seg, unsigned int bus,
 		break;
 	}
 
-	trace_cxl_cam_write(bus, devfn, reg, value);
+	if (bus == 0x35 && devfn == 0)
+		trace_pci_config_direct_write(bus, devfn, reg, value);
 	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
 
 	return 0;
