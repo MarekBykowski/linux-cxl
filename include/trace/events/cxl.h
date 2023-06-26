@@ -110,7 +110,7 @@ struct cxl_mbox_cmd;
 struct pci_doe_task;
 struct pci_doe_protocol;
 
-TRACE_EVENT(cxl_cam_write,
+TRACE_EVENT(pci_config_direct_write,
 	TP_PROTO(unsigned int bus, unsigned int devfn, int reg, unsigned int value),
 	TP_ARGS(bus, devfn, reg, value),
 	TP_STRUCT__entry(
@@ -126,15 +126,16 @@ TRACE_EVENT(cxl_cam_write,
 		__entry->value = value;
 	),
 	/* b:fn am w val */
-	TP_printk("b:fn=%x:%x reg=%x access=cam -> %x",
+	TP_printk("bdf=%x:%x.%x addr=%x -> %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->value
 	)
 );
 
-TRACE_EVENT(cxl_cam_read,
+TRACE_EVENT(pci_config_direct_read,
 	TP_PROTO(unsigned int bus, unsigned int devfn, int reg, unsigned int value),
 	TP_ARGS(bus, devfn, reg, value),
 	TP_STRUCT__entry(
@@ -149,16 +150,17 @@ TRACE_EVENT(cxl_cam_read,
 		__entry->reg = reg;
 		__entry->value = value;
 	),
-	/* b:fn am w val */
-	TP_printk("b:fn=%x:%x reg=%x access=cam <- %x",
+	/* bdf addr val */
+	TP_printk("bdf=%x:%x.%x addr=%x <- %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->value
 	)
 );
 
-TRACE_EVENT(cxl_ecam_write,
+TRACE_EVENT(pci_config_mm_write,
 	TP_PROTO(unsigned int bus, unsigned int devfn, int reg, void __iomem* addr, unsigned int value),
 	TP_ARGS(bus, devfn, reg, addr, value),
 	TP_STRUCT__entry(
@@ -175,9 +177,10 @@ TRACE_EVENT(cxl_ecam_write,
 		__entry->addr = addr;
 		__entry->value = value;
 	),
-	TP_printk("b:fn=%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx -> %x",
+	TP_printk("bdf=%x:%x.%x addr=%x mmio=VA:%px->PA:%lx -> %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->addr,
 		is_vmalloc_addr(__entry->addr) ?
@@ -187,7 +190,7 @@ TRACE_EVENT(cxl_ecam_write,
 	)
 );
 
-TRACE_EVENT(cxl_ecam_read,
+TRACE_EVENT(pci_config_mm_read,
 	TP_PROTO(unsigned int bus, unsigned int devfn, int reg, void __iomem* addr, unsigned int value),
 	TP_ARGS(bus, devfn, reg, addr, value),
 	TP_STRUCT__entry(
@@ -205,9 +208,10 @@ TRACE_EVENT(cxl_ecam_read,
 		__entry->value = value;
 	),
 	/* vmalloc_to_pfn */
-	TP_printk("b:fn=%x:%x reg=%x access=ecam mmio=VA:%px->PA:%lx <- %x",
+	TP_printk("bdf=%x:%x.%x addr=%x mmio=VA:%px->PA:%lx <- %x",
 		__entry->bus,
-		__entry->devfn,
+		PCI_SLOT(__entry->devfn),
+		PCI_FUNC(__entry->devfn),
 		__entry->reg,
 		__entry->addr,
 		is_vmalloc_addr(__entry->addr) ?
