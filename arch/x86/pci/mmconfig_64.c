@@ -56,7 +56,8 @@ err:		*value = -1;
 		break;
 	}
 
-	trace_cxl_ecam_read(bus, devfn, reg, addr + reg, *value);
+	if (bus == 0x35 && devfn == 0)
+		trace_pci_config_mm_read(bus, devfn, reg, addr + reg, *value);
 	rcu_read_unlock();
 
 	return 0;
@@ -89,7 +90,8 @@ static int pci_mmcfg_write(unsigned int seg, unsigned int bus,
 		mmio_config_writel(addr + reg, value);
 		break;
 	}
-	trace_cxl_ecam_write(bus, devfn, reg, addr + reg, value);
+	if (bus == 0x35 && devfn == 0)
+		trace_pci_config_mm_write(bus, devfn, reg, addr + reg, value);
 	rcu_read_unlock();
 
 	return 0;
