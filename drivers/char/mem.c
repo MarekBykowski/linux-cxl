@@ -367,6 +367,8 @@ static int mmap_mem(struct file *file, struct vm_area_struct *vma)
 	size_t size = vma->vm_end - vma->vm_start;
 	phys_addr_t offset = (phys_addr_t)vma->vm_pgoff << PAGE_SHIFT;
 
+	trace_printk("mb: %s from %pS\n", __func__,(void *) _RET_IP_);
+
 	/* Does it even fit in phys_addr_t? */
 	if (offset >> PAGE_SHIFT != vma->vm_pgoff)
 		return -EINVAL;
