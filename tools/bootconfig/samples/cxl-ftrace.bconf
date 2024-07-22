@@ -2,10 +2,11 @@ kernel {
       tp_printk
       trace_options =  sym-addr, hash-ptr, nofunc_stack_trace, nofunc-no-repeats
       trace_clock = global
-      trace_buf_size = 2M
+      trace_buf_size = 4M
       ftrace = function
       #ftrace = function_graph
       fgraph_max_depth = 5
       ftrace_filter = "*cxl*"
       #ftrace_filter = "cxl_parse_cfmws,add_cxl_resources,cxl_acpi_probe"
+      trace_event = "cxl:*"
 }
