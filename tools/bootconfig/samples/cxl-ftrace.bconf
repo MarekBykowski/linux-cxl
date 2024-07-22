@@ -2,7 +2,7 @@ kernel {
       tp_printk
       trace_options =  sym-addr, hash-ptr, nofunc_stack_trace, nofunc-no-repeats
       trace_clock = global
-      trace_buf_size = 4M
+      trace_buf_size = 2M
       ftrace = function
       #ftrace = function_graph
       fgraph_max_depth = 5
