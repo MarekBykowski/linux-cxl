@@ -461,6 +461,7 @@ int cxl_query_cmd(struct cxl_memdev *cxlmd,
 	return 0;
 }
 
+extern void trace_call(struct task_struct *task, unsigned long *sp, int depth, const char *loglvl);
 /**
  * handle_mailbox_cmd_from_user() - Dispatch a mailbox command for userspace.
  * @cxlds: The device data for the operation
@@ -501,6 +502,8 @@ static int handle_mailbox_cmd_from_user(struct cxl_dev_state *cxlds,
 
 	/* cxlds->mbox_send should tell cxl_pci_mbox_send() */
 	dev_dbg(dev, "cxlds->mbox_send %ps\n", cxlds->mbox_send);
+	/* mb: */
+	trace_call(NULL, NULL, 5, KERN_INFO);
 	rc = cxlds->mbox_send(cxlds, mbox_cmd);
 	if (rc)
 		goto out;
