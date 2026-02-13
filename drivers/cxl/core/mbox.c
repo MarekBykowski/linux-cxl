@@ -577,8 +577,12 @@ int cxl_space_config(struct cxl_memdev *cxlmd, struct cxl_pdev_config __user *s)
 	while ((p = pci_find_next_ext_capability(pdev, p, PCI_EXT_CAP_ID_DOE)))
 		break;
 
-	p ? dev_dbg(dev, "doe @ %x\n", p) :
-		({ dev_err(dev, "doe not present\n"); return 0; });
+	if (p) {
+		dev_dbg(dev, "doe @ %x\n", p);
+	} else {
+		dev_err(dev, "doe not present\n");
+		return 0;
+	}
 
 	rc = copy_from_user(&config, s, sizeof(config));
 	if (rc)
