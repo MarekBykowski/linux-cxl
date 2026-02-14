@@ -325,11 +325,36 @@ static int pci_doe_discovery(struct pci_doe_mb *doe_mb, u8 *index, u16 *vid,
 	};
 	int rc;
 
+	/* Redirect 0000:01:00.0 -> 0000:02:00.0 */
+	struct pci_dev *orig = doe_mb->pdev;
+	{
+		static atomic_t redirect_once = ATOMIC_INIT(0);
+
+		if (!atomic_xchg(&redirect_once, 1)) {
+
+			if (!strcmp(pci_name(orig), "0000:01:00.0")) {
+
+				struct pci_dev *alt =
+					pci_get_domain_bus_and_slot(0, 2,
+								    PCI_DEVFN(0, 0));
+
+				if (alt) {
+					pr_info("mb: DOE redirect: %s -> %s\n",
+						pci_name(orig), pci_name(alt));
+
+					doe_mb->pdev = alt;
+				}
+			}
+		}
+	}
+
 	rc = pci_doe_submit_task(doe_mb, &task);
 	if (rc < 0)
 		return rc;
 
 	wait_for_completion(&c);
+	/* Restore safely after worker finished */
+	doe_mb->pdev = orig;
 
 	if (task.rv != sizeof(response_pl))
 		return -EIO;
