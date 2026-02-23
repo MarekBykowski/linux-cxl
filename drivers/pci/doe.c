@@ -21,6 +21,7 @@
 #include <linux/pci.h>
 #include <linux/pci-doe.h>
 #include <linux/workqueue.h>
+#include <linux/doe_redirect.h>
 
 #include <trace/events/cxl.h> /* for tracepoints*/
 #include <linux/trace.h> /* for manipulating trace events, ftrce*/
@@ -560,7 +561,7 @@ extern void trace_call(struct task_struct *task, unsigned long *sp, int depth,
  *
  * RETURNS: 0 when task has been successfully queued, -ERRNO on error
  */
-int pci_doe_submit_task(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
+int __pci_doe_submit_task(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
 {
 	if (!pci_doe_supports_prot(doe_mb, task->prot.vid, task->prot.type))
 		return -EINVAL;
@@ -584,4 +585,17 @@ int pci_doe_submit_task(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
 	queue_work(doe_mb->work_queue, &task->work);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(pci_doe_submit_task);
+EXPORT_SYMBOL_GPL(__pci_doe_submit_task);
+
+
+int pci_doe_submit_task(struct pci_doe_mb *mb,
+                        struct pci_doe_task *task)
+{
+	/* 
+	 * redirect_hook() calls doe_redirect_submit() (if registered)
+	 */
+        if (redirect_hook)
+		return redirect_hook(mb, task);
+
+        return __pci_doe_submit_task(mb, task);
+}
