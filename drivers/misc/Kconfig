@@ -496,6 +496,13 @@ config VCPU_STALL_DETECTOR
 
 	  If you do not intend to run this kernel as a guest, say N.
 
+config DOE_REDIRECT
+        tristate "DOE redirect test driver"
+        default n
+        help
+          Simple experimental DOE redirection driver.
+          Say Y or M if you want to enable it.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
