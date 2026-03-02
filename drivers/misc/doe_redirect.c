@@ -5,7 +5,7 @@
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
-#include <include/linux/pci-doe.h> /*struct pci_doe_task*/
+#include <linux/pci-doe.h> /*struct pci_doe_task*/
 
 DEFINE_STATIC_KEY_TRUE(doe_redirect_key);
 
