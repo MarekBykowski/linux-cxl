@@ -7,6 +7,9 @@
 #include <linux/slab.h>
 #include <linux/pci-doe.h> /*struct pci_doe_task*/
 
+#define DEV_A "0000:01:00.0"
+#define DEV_B "0000:02:00.0"
+
 DEFINE_STATIC_KEY_TRUE(doe_redirect_key);
 
 /* TODO: wrap up all the variables into a single structure */
@@ -25,8 +28,6 @@ static int __doe_redirect_submit(struct pci_doe_mb *mb,
 static struct dentry *dbg_dir;
 static bool redirect_enabled;
 
-#define DEV_A "0000:01:00.0"
-#define DEV_B "0000:02:00.0"
 
 static int doe_redirect_submit(struct pci_doe_mb *mb,
                                struct pci_doe_task *task)
@@ -42,8 +43,28 @@ static int doe_redirect_submit(struct pci_doe_mb *mb,
 static int __doe_redirect_submit(struct pci_doe_mb *mb,
                                struct pci_doe_task *task)
 {
-        struct doe_redirect *r;
+	struct pci_doe_mb *a, *b;
         struct pci_doe_mb *target = mb;
+
+	struct cxl_dev_state *cxlds_A = pci_get_drvdata(pdev_A);
+	struct cxl_dev_state *cxlds_B = pci_get_drvdata(pdev_B);
+
+	int off_A = pci_find_ext_capability(pdev_A, PCI_EXT_CAP_ID_DOE);
+	int off_B = pci_find_ext_capability(pdev_B, PCI_EXT_CAP_ID_DOE);
+
+	mb_A = xa_load(&cxlds_A->doe_mbs, off_A);
+	mb_B = xa_load(&cxlds_B->doe_mbs, off_B);
+
+	a = find_doe_mb(DEV_A);
+	b = find_doe_mb(DEV_B);
+
+	if (!a || !b) {
+		pr_err("DOE devices not found\n");
+		return -ENODEV;
+	}
+
+	r->from = a;
+	r->to   = b;
 
 	/*
 	 * rcu lock guarantees that even though a writer replaces `redir`
@@ -143,25 +164,13 @@ static const struct file_operations enable_fops = {
 
 static int __init doe_redirect_init(void)
 {
-	struct pci_doe_mb *a, *b;
 	struct doe_redirect *r;
 
 	pr_info("DOE redirect init\n");
 
-	a = find_doe_mb(DEV_A);
-	b = find_doe_mb(DEV_B);
-
-	if (!a || !b) {
-		pr_err("DOE devices not found\n");
-		return -ENODEV;
-	}
-
 	r = kzalloc(sizeof(*r), GFP_KERNEL);
 	if (!r)
 		return -ENOMEM;
-
-	r->from = a;
-	r->to   = b;
 
 	rcu_assign_pointer(redir, r);
 
